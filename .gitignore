@@ -1,0 +1,39 @@
+# Зависимости Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Переменные окружения
+.env
+.env.local
+.env.production
+
+# Файлы операционной системы
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Файлы редакторов
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Логи приложения
+logs/
+*.log
+
+# Временные файлы
+tmp/
+temp/
+*.tmp
+
+# Кэш
+.cache/
+.parcel-cache/
+
+# Автогенерируемые файлы
+dist/
+build/
+*.tgz

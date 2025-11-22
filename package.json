@@ -1,0 +1,17 @@
+{
+  "name": "video-watch-party",
+  "version": "1.0.0",
+  "description": "Simplified Rave analog for synchronized video watching",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js",
+    "dev": "nodemon server/server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
