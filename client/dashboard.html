@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Личный кабинет - VideoWatchParty</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">🎬 VideoWatchParty</div>
+        <div class="nav-links">
+            <a href="index.html">Главная</a>
+            <a href="#" id="usernameDisplay"></a>
+            <a href="#" id="logoutBtn" class="btn btn-secondary">Выйти</a>
+        </div>
+    </nav>
+
+    <div class="dashboard-container">
+        <div class="dashboard-header">
+            <h1>👋 Добро пожаловать, <span id="userName"></span>!</h1>
+            <p>Управляйте вашими комнатами и настройками</p>
+        </div>
+
+        <div class="dashboard-grid">
+            <!-- Статистика -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">🎬</div>
+                    <div class="stat-info">
+                        <h3 id="roomsCount">0</h3>
+                        <p>Созданных комнат</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-info">
+                        <h3 id="totalUsers">0</h3>
+                        <p>Участников всего</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">⏱️</div>
+                    <div class="stat-info">
+                        <h3 id="watchTime">0ч</h3>
+                        <p>Времени просмотра</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Создание комнаты -->
+            <div class="card">
+                <h2>🎯 Создать новую комнату</h2>
+                <form id="createRoomForm" class="room-form">
+                    <div class="form-group">
+                        <label for="roomName">Название комнаты</label>
+                        <input type="text" id="roomName" required placeholder="Например: Киновечер с друзьями">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="roomDescription">Описание</label>
+                        <textarea id="roomDescription" placeholder="О чём будете смотреть?"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="isPublic" checked>
+                            <span class="checkmark"></span>
+                            Публичная комната (видна всем)
+                        </label>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">🎬 Создать комнату</button>
+                </form>
+            </div>
+
+            <!-- Мои комнаты -->
+            <div class="card">
+                <h2>📺 Мои комнаты</h2>
+                <div id="myRoomsList" class="rooms-list">
+                    <div class="empty-state">
+                        <div>🎬</div>
+                        <p>У вас пока нет комнат</p>
+                        <p class="text-muted">Создайте первую комнату выше</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Активные комнаты -->
+            <div class="card">
+                <h2>🔥 Активные комнаты</h2>
+                <div id="activeRoomsList" class="rooms-list">
+                    <div class="empty-state">
+                        <div>⏳</div>
+                        <p>Загрузка комнат...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Элементы DOM
+        const usernameDisplay = document.getElementById('usernameDisplay');
+        const userName = document.getElementById('userName');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const createRoomForm = document.getElementById('createRoomForm');
+        const myRoomsList = document.getElementById('myRoomsList');
+        const activeRoomsList = document.getElementById('activeRoomsList');
+        const roomsCount = document.getElementById('roomsCount');
+        const totalUsers = document.getElementById('totalUsers');
+        const watchTime = document.getElementById('watchTime');
+
+        let currentUser = null;
+
+        // Проверка авторизации
+        function checkAuth() {
+            const token = localStorage.getItem('token');
+            const userData = localStorage.getItem('user');
+            
+            if (!token || !userData) {
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            try {
+                currentUser = JSON.parse(userData);
+                usernameDisplay.textContent = currentUser.username;
+                userName.textContent = currentUser.username;
+            } catch (error) {
+                window.location.href = 'login.html';
+            }
+        }
+
+        // Выход
+        logoutBtn.addEventListener('click', function() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = 'index.html';
+        });
+
+        // Создание комнаты
+        createRoomForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const roomName = document.getElementById('roomName').value;
+            const roomDescription = document.getElementById('roomDescription').value;
+            const isPublic = document.getElementById('isPublic').checked;
+            
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('/api/rooms/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        name: roomName,
+                        description: roomDescription,
+                        isPublic: isPublic
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert('Комната создана!');
+                    createRoomForm.reset();
+                    loadMyRooms();
+                    loadActiveRooms();
+                } else {
+                    alert(data.error || 'Ошибка создания комнаты');
+                }
+            } catch (error) {
+                alert('Ошибка соединения');
+            }
+        });
+
+        // Загрузка моих комнат
+        async function loadMyRooms() {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('/api/rooms/my', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                const rooms = await response.json();
+                
+                if (rooms.length === 0) {
+                    myRoomsList.innerHTML = `
+                        <div class="empty-state">
+                            <div>🎬</div>
+                            <p>У вас пока нет комнат</p>
+                            <p class="text-muted">Создайте первую комнату выше</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                myRoomsList.innerHTML = rooms.map(room => `
+                    <div class="room-item">
+                        <div class="room-info">
+                            <h4>${room.name}</h4>
+                            <p class="text-muted">${room.description || 'Без описания'}</p>
+                            <div class="room-meta">
+                                <span>👥 ${room.users.length} участников</span>
+                                <span>${new Date(room.createdAt).toLocaleDateString()}</span>
+                            </div>
+                        </div>
+                        <div class="room-actions">
+                            <a href="room.html?room=${room._id}" class="btn btn-primary btn-small">
+                                Открыть
+                            </a>
+                        </div>
+                    </div>
+                `).join('');
+                
+                roomsCount.textContent = rooms.length;
+                
+            } catch (error) {
+                console.error('Ошибка загрузки комнат:', error);
+            }
+        }
+
+        // Загрузка активных комнат
+        async function loadActiveRooms() {
+            try {
+                const response = await fetch('/api/rooms/active');
+                const rooms = await response.json();
+                
+                if (rooms.length === 0) {
+                    activeRoomsList.innerHTML = `
+                        <div class="empty-state">
+                            <div>😴</div>
+                            <p>Нет активных комнат</p>
+                            <p class="text-muted">Будьте первым, кто создаст комнату!</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                activeRoomsList.innerHTML = rooms.map(room => `
+                    <div class="room-item">
+                        <div class="room-info">
+                            <h4>${room.name}</h4>
+                            <p class="text-muted">${room.description || 'Присоединяйтесь к просмотру!'}</p>
+                            <div class="room-meta">
+                                <span>👥 ${room.users.length} участников</span>
+                                <span>Создал: ${room.owner?.username || 'Неизвестно'}</span>
+                            </div>
+                        </div>
+                        <div class="room-actions">
+                            <a href="room.html?room=${room._id}" class="btn btn-primary btn-small">
+                                Присоединиться
+                            </a>
+                        </div>
+                    </div>
+                `).join('');
+                
+            } catch (error) {
+                console.error('Ошибка загрузки активных комнат:', error);
+            }
+        }
+
+        // Загрузка статистики
+        async function loadStats() {
+            // Заглушка для статистики
+            totalUsers.textContent = '12';
+            watchTime.textContent = '5ч';
+        }
+
+        // Инициализация
+        window.addEventListener('load', function() {
+            checkAuth();
+            loadMyRooms();
+            loadActiveRooms();
+            loadStats();
+        });
+    </script>
+</body>
+</html>
