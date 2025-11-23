@@ -9,21 +9,250 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 async function initializeApp() {
-    // Проверка авторизации для защищенных страниц
+    // Обновление информации о пользователе в навигации
+    updateUserNavigation();
+    
+    // Инициализация конкретных страниц
     if (window.location.pathname === '/dashboard') {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            window.location.href = '/login';
-            return;
-        }
-        loadUserData();
+        initializeDashboard();
+    } else if (window.location.pathname === '/') {
+        initializeHomepage();
     }
-
-    // Инициализация видео плеера
+    
+    // Инициализация видео плеера (если есть на странице)
     initializeVideoPlayer();
     
-    // Инициализация комнат
+    // Инициализация комнат (если есть на странице)
     initializeRooms();
+}
+
+// Обновление навигации
+function updateUserNavigation() {
+    const usernameDisplay = document.getElementById('usernameDisplay');
+    const userName = document.getElementById('userName');
+    const logoutBtn = document.getElementById('logoutBtn');
+    
+    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    
+    if (user && usernameDisplay) {
+        usernameDisplay.textContent = user.username;
+    }
+    
+    if (user && userName) {
+        userName.textContent = user.username;
+    }
+    
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', function() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/';
+        });
+    }
+}
+
+// Инициализация главной страницы
+function initializeHomepage() {
+    loadRooms();
+}
+
+// Инициализация дашборда
+function initializeDashboard() {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        window.location.href = '/login';
+        return;
+    }
+    
+    loadMyRooms();
+    loadActiveRooms();
+    loadStats();
+    initializeRoomCreation();
+}
+
+// Загрузка комнат для главной страницы
+async function loadRooms() {
+    try {
+        const response = await fetch(`${API_URL}/api/rooms`);
+        const rooms = await response.json();
+        
+        const roomsList = document.getElementById('roomsList');
+        if (!roomsList) return;
+        
+        if (rooms.length === 0) {
+            roomsList.innerHTML = `
+                <div style="text-align: center; grid-column: 1 / -1; color: #888; padding: 2rem;">
+                    Пока нет активных комнат. 
+                    <a href="/register" style="color: #4ecdc4;">Создайте первую!</a>
+                </div>
+            `;
+            return;
+        }
+        
+        roomsList.innerHTML = rooms.map(room => `
+            <div class="room-card">
+                <div class="room-header">
+                    <h3>${room.name}</h3>
+                    <div class="room-users">👥 ${room.users.length}</div>
+                </div>
+                <p style="color: #ccc; margin-bottom: 1rem;">${room.description || 'Присоединяйтесь к просмотру!'}</p>
+                <a href="/room.html?room=${room._id}" class="btn btn-primary" style="display: block; text-align: center;">
+                    Присоединиться
+                </a>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Ошибка загрузки комнат:', error);
+    }
+}
+
+// Загрузка моих комнат
+async function loadMyRooms() {
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/api/rooms/my`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        const rooms = await response.json();
+        const myRoomsList = document.getElementById('myRoomsList');
+        const roomsCount = document.getElementById('roomsCount');
+        
+        if (!myRoomsList) return;
+        
+        if (rooms.length === 0) {
+            myRoomsList.innerHTML = `
+                <div class="empty-state">
+                    <div>🎬</div>
+                    <p>У вас пока нет комнат</p>
+                    <p class="text-muted">Создайте первую комнату выше</p>
+                </div>
+            `;
+            if (roomsCount) roomsCount.textContent = '0';
+            return;
+        }
+        
+        myRoomsList.innerHTML = rooms.map(room => `
+            <div class="room-item">
+                <div class="room-info">
+                    <h4>${room.name}</h4>
+                    <p class="text-muted">${room.description || 'Без описания'}</p>
+                    <div class="room-meta">
+                        <span>👥 ${room.users.length} участников</span>
+                        <span>${new Date(room.createdAt).toLocaleDateString()}</span>
+                    </div>
+                </div>
+                <div class="room-actions">
+                    <a href="/room.html?room=${room._id}" class="btn btn-primary btn-small">
+                        Открыть
+                    </a>
+                </div>
+            </div>
+        `).join('');
+        
+        if (roomsCount) roomsCount.textContent = rooms.length;
+        
+    } catch (error) {
+        console.error('Ошибка загрузки комнат:', error);
+    }
+}
+
+// Загрузка активных комнат
+async function loadActiveRooms() {
+    try {
+        const response = await fetch(`${API_URL}/api/rooms/active`);
+        const rooms = await response.json();
+        
+        const activeRoomsList = document.getElementById('activeRoomsList');
+        if (!activeRoomsList) return;
+        
+        if (rooms.length === 0) {
+            activeRoomsList.innerHTML = `
+                <div class="empty-state">
+                    <div>😴</div>
+                    <p>Нет активных комнат</p>
+                    <p class="text-muted">Будьте первым, кто создаст комнату!</p>
+                </div>
+            `;
+            return;
+        }
+        
+        activeRoomsList.innerHTML = rooms.map(room => `
+            <div class="room-item">
+                <div class="room-info">
+                    <h4>${room.name}</h4>
+                    <p class="text-muted">${room.description || 'Присоединяйтесь к просмотру!'}</p>
+                    <div class="room-meta">
+                        <span>👥 ${room.users.length} участников</span>
+                        <span>Создал: ${room.owner?.username || 'Неизвестно'}</span>
+                    </div>
+                </div>
+                <div class="room-actions">
+                    <a href="/room.html?room=${room._id}" class="btn btn-primary btn-small">
+                        Присоединиться
+                    </a>
+                </div>
+            </div>
+        `).join('');
+        
+    } catch (error) {
+        console.error('Ошибка загрузки активных комнат:', error);
+    }
+}
+
+// Инициализация создания комнаты
+function initializeRoomCreation() {
+    const createRoomForm = document.getElementById('createRoomForm');
+    if (!createRoomForm) return;
+    
+    createRoomForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const roomName = document.getElementById('roomName').value;
+        const roomDescription = document.getElementById('roomDescription').value;
+        const isPublic = document.getElementById('isPublic').checked;
+        
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_URL}/api/rooms/create`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    name: roomName,
+                    description: roomDescription,
+                    isPublic: isPublic
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok && data.success) {
+                showMessage('Комната создана успешно!');
+                createRoomForm.reset();
+                loadMyRooms();
+                loadActiveRooms();
+            } else {
+                showMessage(data.error || 'Ошибка создания комнаты', true);
+            }
+        } catch (error) {
+            showMessage('Ошибка соединения', true);
+        }
+    });
+}
+
+// Загрузка статистики
+async function loadStats() {
+    // Заглушка для статистики
+    const totalUsers = document.getElementById('totalUsers');
+    const watchTime = document.getElementById('watchTime');
+    
+    if (totalUsers) totalUsers.textContent = '12';
+    if (watchTime) watchTime.textContent = '5ч';
 }
 
 // Инициализация видео плеера
@@ -87,7 +316,7 @@ function initializeVideoPlayer() {
     }
 }
 
-// Инициализация комнат
+// Инициализация комнат (для страницы с видео)
 function initializeRooms() {
     const createRoomBtn = document.getElementById('createRoomBtn');
     const joinRoomBtn = document.getElementById('joinRoomBtn');
@@ -175,36 +404,6 @@ function updateRoomUI(roomId) {
     }
 }
 
-// Загрузка данных пользователя
-async function loadUserData() {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
-    try {
-        const response = await fetch(`${API_URL}/api/auth/me`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-
-        if (response.ok) {
-            const userData = await response.json();
-            const usernameDisplay = document.getElementById('usernameDisplay');
-            if (usernameDisplay) {
-                usernameDisplay.textContent = userData.username;
-            }
-        }
-    } catch (error) {
-        console.error('Ошибка загрузки данных:', error);
-    }
-}
-
-// Выход
-function logout() {
-    localStorage.removeItem('token');
-    window.location.href = '/';
-}
-
 // Вспомогательные функции
 function generateRoomId() {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -239,4 +438,8 @@ function showMessage(message, isError = false) {
 }
 
 // Глобальные функции
-window.logout = logout;
+window.logout = function() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.href = '/';
+};
