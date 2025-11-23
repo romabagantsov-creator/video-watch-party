@@ -83,6 +83,16 @@
             color: #ff6b6b;
         }
         
+        .current-video-info {
+            margin-top: 1rem;
+            padding: 0.8rem;
+            background: rgba(76, 175, 80, 0.1);
+            border: 1px solid #4caf50;
+            border-radius: 8px;
+            text-align: center;
+            color: #4caf50;
+        }
+        
         .chat-container {
             background: rgba(45, 45, 45, 0.8);
             border-radius: 15px;
@@ -186,6 +196,11 @@
 
         <div class="video-section">
             <div class="video-player-container">
+                <!-- Информация о текущем видео -->
+                <div id="currentVideoInfo" class="current-video-info" style="display: none;">
+                    📹 Текущее видео: <span id="currentVideoUrl"></span>
+                </div>
+                
                 <video id="videoPlayer" controls>
                     <!-- Видео будет загружено через JS -->
                     Ваш браузер не поддерживает видео тег.
@@ -221,7 +236,7 @@
                 <div class="chat-messages" id="chatMessages">
                     <div class="chat-message">
                         <div class="message-sender">Система</div>
-                        <div>Добро пожаловать в комнату! Вставьте ссылку на видео чтобы начать просмотр</div>
+                        <div>Добро пожаловать в комнату! Ожидайте загрузки видео или вставьте свою ссылку</div>
                     </div>
                 </div>
                 <div class="chat-input">
@@ -250,6 +265,7 @@
         let socket = null;
         let currentUser = JSON.parse(localStorage.getItem('user') || 'null');
         let currentVideoType = '';
+        let currentVideoUrl = '';
 
         // Инициализация при загрузке
         document.addEventListener('DOMContentLoaded', function() {
@@ -261,8 +277,9 @@
             // Подключаемся к комнате
             socket = io();
             
-            // Присоединяемся к комнате
+            // Присоединяемся к комнате и запрашиваем текущее видео
             socket.emit('join-room', roomId);
+            socket.emit('request-current-video', { roomId: roomId });
             
             // Обновляем интерфейс
             updateRoomUI();
@@ -298,54 +315,72 @@
 
         function loadVideoFromUrl() {
             const videoUrl = document.getElementById('videoUrlInput').value.trim();
+            if (videoUrl) {
+                loadVideo(videoUrl, true); // true = broadcast to others
+            }
+        }
+
+        function loadVideo(videoUrl, broadcast = false) {
             const videoPlayer = document.getElementById('videoPlayer');
             const iframeContainer = document.getElementById('videoIframeContainer');
             const videoControls = document.getElementById('videoControls');
             const platformNotice = document.getElementById('platformNotice');
+            const currentVideoInfo = document.getElementById('currentVideoInfo');
+            const currentVideoUrlSpan = document.getElementById('currentVideoUrl');
             
-            if (videoUrl) {
-                // Очищаем предыдущие источники
-                videoPlayer.innerHTML = '';
-                iframeContainer.innerHTML = '';
-                
-                // Скрываем все плееры и уведомления
-                videoPlayer.style.display = 'none';
-                platformNotice.style.display = 'none';
+            // Сохраняем текущее видео
+            currentVideoUrl = videoUrl;
+            document.getElementById('videoUrlInput').value = videoUrl;
+            
+            // Показываем информацию о текущем видео
+            currentVideoUrlSpan.textContent = videoUrl;
+            currentVideoInfo.style.display = 'block';
+            
+            // Очищаем предыдущие источники
+            videoPlayer.innerHTML = '';
+            iframeContainer.innerHTML = '';
+            
+            // Скрываем все плееры и уведомления
+            videoPlayer.style.display = 'none';
+            platformNotice.style.display = 'none';
+            videoControls.classList.remove('hidden');
+            
+            // Определяем тип видео и загружаем
+            if (videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')) {
+                loadYouTubeVideo(videoUrl);
+                // Скрываем контролы для YouTube
+                videoControls.classList.add('hidden');
+                platformNotice.style.display = 'block';
+            } else if (videoUrl.includes('vk.com') || videoUrl.includes('vk.ru')) {
+                loadVKVideo(videoUrl);
+                // Скрываем контролы для VK
+                videoControls.classList.add('hidden');
+                platformNotice.style.display = 'block';
+            } else if (videoUrl.includes('rutube.ru')) {
+                loadRutubeVideo(videoUrl);
+                // Скрываем контролы для Rutube
+                videoControls.classList.add('hidden');
+                platformNotice.style.display = 'block';
+            } else if (videoUrl.endsWith('.mp4') || videoUrl.includes('mp4')) {
+                loadMP4Video(videoUrl);
+                // Показываем контролы для MP4
                 videoControls.classList.remove('hidden');
-                
-                // Определяем тип видео и загружаем
-                if (videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')) {
-                    loadYouTubeVideo(videoUrl);
-                    // Скрываем контролы для YouTube
-                    videoControls.classList.add('hidden');
-                    platformNotice.style.display = 'block';
-                } else if (videoUrl.includes('vk.com') || videoUrl.includes('vk.ru')) {
-                    loadVKVideo(videoUrl);
-                    // Скрываем контролы для VK
-                    videoControls.classList.add('hidden');
-                    platformNotice.style.display = 'block';
-                } else if (videoUrl.includes('rutube.ru')) {
-                    loadRutubeVideo(videoUrl);
-                    // Скрываем контролы для Rutube
-                    videoControls.classList.add('hidden');
-                    platformNotice.style.display = 'block';
-                } else if (videoUrl.endsWith('.mp4') || videoUrl.includes('mp4')) {
-                    loadMP4Video(videoUrl);
-                    // Показываем контролы для MP4
-                    videoControls.classList.remove('hidden');
-                    platformNotice.style.display = 'none';
-                } else {
-                    alert('Не поддерживаемый формат видео. Используйте: YouTube, VK, Rutube или прямые MP4 ссылки');
-                    return;
-                }
-                
-                // Сообщаем другим пользователям о смене видео
+                platformNotice.style.display = 'none';
+            } else {
+                alert('Не поддерживаемый формат видео. Используйте: YouTube, VK, Rutube или прямые MP4 ссылки');
+                return;
+            }
+            
+            // Сообщаем другим пользователям о смене видео
+            if (broadcast) {
                 socket.emit('video-changed', {
                     roomId: roomId,
                     videoUrl: videoUrl,
                     videoType: currentVideoType
                 });
                 
+                addSystemMessage(`Вы загрузили новое видео (${currentVideoType})`);
+            } else {
                 addSystemMessage(`Видео загружено (${currentVideoType})`);
             }
         }
@@ -517,13 +552,29 @@
 
             // Слушаем смену видео от других пользователей
             socket.on('video-changed', (data) => {
-                document.getElementById('videoUrlInput').value = data.videoUrl;
-                loadVideoFromUrl();
+                loadVideo(data.videoUrl, false); // false = don't broadcast
                 addSystemMessage(`Пользователь загрузил новое видео (${data.videoType})`);
+            });
+
+            // Запрос текущего видео
+            socket.on('current-video', (data) => {
+                if (data.videoUrl && !currentVideoUrl) {
+                    loadVideo(data.videoUrl, false);
+                    addSystemMessage('Восстановлено текущее видео комнаты');
+                }
             });
 
             socket.on('user-joined', (userId) => {
                 addSystemMessage(`Пользователь присоединился к комнате`);
+                
+                // Если у нас есть видео, отправляем его новому пользователю
+                if (currentVideoUrl) {
+                    socket.emit('video-changed', {
+                        roomId: roomId,
+                        videoUrl: currentVideoUrl,
+                        videoType: currentVideoType
+                    });
+                }
             });
         }
 
