@@ -3,550 +3,257 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Video Watch Party</title>
+    <title>VideoWatchParty - Смотри видео с друзьями</title>
     <style>
-        * { 
-            margin: 0; 
-            padding: 0; 
-            box-sizing: border-box; 
-        }
-        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #1a1a1a; 
+            background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
             color: white; 
             min-height: 100vh;
         }
         
-        .container { 
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 15px;
+        .navbar {
+            background: rgba(45, 45, 45, 0.95);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
         }
         
-        /* Header */
-        header {
-            background: #2d2d2d;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            border: 1px solid #444;
-        }
-        
-        header h1 {
-            text-align: center;
-            color: #ff6b6b;
-            margin-bottom: 15px;
+        .logo {
             font-size: 1.5rem;
-        }
-        
-        .room-controls {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        
-        @media (min-width: 768px) {
-            .room-controls {
-                flex-direction: row;
-                align-items: center;
-            }
-        }
-        
-        .room-controls input {
-            padding: 12px;
-            border: 1px solid #555;
-            background: #333;
-            color: white;
-            border-radius: 8px;
-            font-size: 16px;
-        }
-        
-        .room-controls button {
-            padding: 12px 20px;
-            background: #ff6b6b;
-            border: none;
-            color: white;
-            border-radius: 8px;
-            cursor: pointer;
             font-weight: bold;
+            color: #ff6b6b;
         }
         
-        .room-info {
-            background: #333;
-            padding: 12px;
-            border-radius: 8px;
-            margin-top: 10px;
-            display: none;
-        }
-        
-        .room-info.active {
-            display: block;
-        }
-        
-        .invite-link {
+        .nav-links {
             display: flex;
-            gap: 10px;
-            margin-top: 10px;
-        }
-        
-        .invite-link input {
-            flex: 1;
-            padding: 10px;
-            background: #444;
-            border: 1px solid #555;
-            color: white;
-            border-radius: 6px;
-        }
-        
-        .invite-link button {
-            padding: 10px 15px;
-            background: #4ecdc4;
-            border: none;
-            color: white;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-        
-        .supported-sites {
-            font-size: 0.8rem;
-            color: #888;
-            margin-top: 10px;
-            text-align: center;
-        }
-        
-        /* Main Content */
-        .main-content {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-        
-        @media (min-width: 1024px) {
-            .main-content {
-                flex-direction: row;
-            }
-        }
-        
-        /* Video Section */
-        .video-section {
-            flex: 2;
-            background: #2d2d2d;
-            padding: 20px;
-            border-radius: 10px;
-            border: 1px solid #444;
-        }
-        
-        .video-controls {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        
-        @media (min-width: 480px) {
-            .video-controls {
-                flex-direction: row;
-            }
-        }
-        
-        .video-controls input {
-            flex: 1;
-            padding: 12px;
-            border: 1px solid #555;
-            background: #333;
-            color: white;
-            border-radius: 8px;
-            font-size: 16px;
-        }
-        
-        .video-controls button {
-            padding: 12px 20px;
-            background: #4ecdc4;
-            border: none;
-            color: white;
-            border-radius: 8px;
-            cursor: pointer;
-            white-space: nowrap;
-        }
-        
-        #videoPlayer {
-            width: 100%;
-            background: #000;
-            border-radius: 8px;
-            overflow: hidden;
-            margin-bottom: 15px;
-            position: relative;
-        }
-        
-        #videoPlayer::before {
-            content: "";
-            display: block;
-            padding-top: 56.25%;
-        }
-        
-        #videoPlayer iframe,
-        #videoPlayer video {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
-        
-        .video-info {
-            background: #333;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            font-size: 0.9rem;
-        }
-        
-        .player-controls {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
+            gap: 2rem;
             align-items: center;
         }
         
-        .player-controls button {
-            padding: 10px 15px;
-            background: #45b7d1;
-            border: none;
+        .nav-links a {
             color: white;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-        
-        .time-display {
-            font-family: monospace;
-            font-size: 0.9rem;
-            margin: 0 10px;
-        }
-        
-        #progressBar {
-            flex: 1;
-            min-width: 100px;
-        }
-        
-        /* Chat Section */
-        .chat-section {
-            flex: 1;
-            background: #2d2d2d;
-            border-radius: 10px;
-            border: 1px solid #444;
-            display: flex;
-            flex-direction: column;
-            min-height: 400px;
-        }
-        
-        .users-list {
-            padding: 15px;
-            border-bottom: 1px solid #444;
-        }
-        
-        .users-list h3 {
-            color: #4ecdc4;
-            margin-bottom: 10px;
-        }
-        
-        #users {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-        
-        .user-item {
-            padding: 5px 10px;
-            background: #333;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
             border-radius: 5px;
-            font-size: 0.9rem;
+            transition: background 0.3s;
         }
         
-        #messages {
-            flex: 1;
-            padding: 15px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            max-height: 300px;
+        .nav-links a:hover {
+            background: rgba(255, 107, 107, 0.1);
         }
         
-        .message {
-            padding: 10px;
-            background: #333;
-            border-radius: 8px;
-            word-wrap: break-word;
-        }
-        
-        .message .username {
-            font-weight: bold;
-            color: #ff6b6b;
-            font-size: 0.9rem;
-        }
-        
-        .message .text {
-            margin: 5px 0;
-        }
-        
-        .message .timestamp {
-            font-size: 0.7rem;
-            color: #888;
-        }
-        
-        .message-input {
-            display: flex;
-            padding: 15px;
-            gap: 10px;
-            border-top: 1px solid #444;
-        }
-        
-        .message-input input {
-            flex: 1;
-            padding: 12px;
-            border: 1px solid #555;
-            background: #333;
-            color: white;
-            border-radius: 8px;
-            font-size: 16px;
-        }
-        
-        .message-input button {
-            padding: 12px 20px;
-            background: #ff6b6b;
+        .btn {
+            padding: 0.7rem 1.5rem;
             border: none;
-            color: white;
             border-radius: 8px;
             cursor: pointer;
-            white-space: nowrap;
+            font-weight: bold;
+            transition: all 0.3s;
         }
         
-        /* Улучшения для очень маленьких экранов */
-        @media (max-width: 480px) {
-            .container {
-                padding: 10px;
+        .btn-primary {
+            background: #ff6b6b;
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: #4ecdc4;
+            color: white;
+        }
+        
+        .hero {
+            text-align: center;
+            padding: 4rem 2rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .hero p {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            color: #ccc;
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .feature-card {
+            background: rgba(45, 45, 45, 0.8);
+            padding: 2rem;
+            border-radius: 15px;
+            text-align: center;
+            border: 1px solid #444;
+            transition: transform 0.3s;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        
+        .rooms-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .room-card {
+            background: rgba(45, 45, 45, 0.8);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid #444;
+        }
+        
+        .room-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .room-users {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #4ecdc4;
+        }
+        
+        @media (max-width: 768px) {
+            .navbar {
+                flex-direction: column;
+                gap: 1rem;
             }
             
-            header {
-                padding: 12px;
+            .hero h1 {
+                font-size: 2rem;
             }
             
-            header h1 {
-                font-size: 1.3rem;
-            }
-            
-            .video-section,
-            .chat-section {
-                padding: 15px;
-            }
-            
-            .player-controls {
-                justify-content: center;
-            }
-            
-            .player-controls button {
-                flex: 1;
-                min-width: 80px;
+            .features {
+                grid-template-columns: 1fr;
             }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>🎬 Универсальный Video Watch Party</h1>
-            <div class="room-controls">
-                <input type="text" id="roomInput" placeholder="Придумайте название комнаты" value="кино-вечер">
-                <input type="text" id="usernameInput" placeholder="Ваше имя" value="Гость">
-                <button onclick="joinRoom()">Создать/Присоединиться</button>
-            </div>
-            
-            <div class="room-info" id="roomInfo">
-                <div><strong>Комната:</strong> <span id="currentRoomName">кино-вечер</span></div>
-                <div><strong>Участников:</strong> <span id="usersCount">1</span></div>
-                <div class="invite-link">
-                    <input type="text" id="inviteUrl" readonly>
-                    <button onclick="copyInviteLink()">📋 Копировать ссылку</button>
-                </div>
-            </div>
-            
-            <div class="supported-sites">
-                Поддерживаются: YouTube, RuTube, VK (прямые ссылки), Dailymotion, Vimeo
-            </div>
-        </header>
+    <nav class="navbar">
+        <div class="logo">🎬 VideoWatchParty</div>
+        <div class="nav-links">
+            <a href="#features">Возможности</a>
+            <a href="#rooms">Комнаты</a>
+            <a href="login.html" class="btn btn-secondary">Войти</a>
+            <a href="register.html" class="btn btn-primary">Регистрация</a>
+        </div>
+    </nav>
 
-        <div class="main-content">
-            <div class="video-section">
-                <div class="video-controls">
-                    <input type="text" id="videoUrl" placeholder="Вставьте ссылку на видео (YouTube, RuTube, VK и др.)">
-                    <button onclick="loadVideo()">Загрузить видео</button>
-                </div>
-                
-                <div class="video-info" id="videoInfo">
-                    Загрузите видео по ссылке выше
-                </div>
-                
-                <div id="videoPlayer">
-                    <div style="display: flex; justify-content: center; align-items: center; height: 100%; color: #666; flex-direction: column; gap: 10px;">
-                        <div>🎬</div>
-                        <div>Видео появится здесь после загрузки</div>
-                    </div>
-                </div>
-                
-                <div class="player-controls">
-                    <button onclick="togglePlay()" id="playBtn">▶️ Воспр.</button>
-                    <span class="time-display" id="timeDisplay">0:00 / 0:00</span>
-                    <input type="range" id="progressBar" min="0" max="100" value="0" style="flex: 1;">
-                    <button onclick="toggleFullscreen()">📺 Полный экран</button>
-                </div>
-            </div>
+    <section class="hero">
+        <h1>Смотри видео вместе с друзьями</h1>
+        <p>Синхронизированный просмотр, чат и море эмоций в реальном времени</p>
+        <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+            <a href="register.html" class="btn btn-primary" style="font-size: 1.2rem;">
+                🚀 Начать бесплатно
+            </a>
+            <a href="#rooms" class="btn btn-secondary" style="font-size: 1.2rem;">
+                🎬 Присоединиться к просмотру
+            </a>
+        </div>
+    </section>
 
-            <div class="chat-section">
-                <div class="users-list">
-                    <h3>👥 Участники комнаты</h3>
-                    <div id="users"></div>
-                </div>
-                <div id="messages"></div>
-                <div class="message-input">
-                    <input type="text" id="messageInput" placeholder="Введите сообщение..." onkeypress="handleKeyPress(event)">
-                    <button onclick="sendMessage()">Отправить</button>
-                </div>
+    <section id="features" class="features">
+        <div class="feature-card">
+            <div class="feature-icon">🎬</div>
+            <h3>Синхронный просмотр</h3>
+            <p>Все участники видят видео одновременно с точностью до миллисекунды</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">💬</div>
+            <h3>Живой чат</h3>
+            <p>Общайтесь с друзьями во время просмотра</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">👥</div>
+            <h3>До 50 участников</h3>
+            <p>Приглашайте сколько угодно друзей в одну комнату</p>
+        </div>
+    </section>
+
+    <section id="rooms" style="padding: 4rem 2rem; background: rgba(0,0,0,0.3);">
+        <h2 style="text-align: center; margin-bottom: 2rem; font-size: 2.5rem;">
+            🔥 Активные комнаты
+        </h2>
+        <div class="rooms-grid" id="roomsList">
+            <!-- Список комнат загрузится через JavaScript -->
+            <div style="text-align: center; grid-column: 1 / -1; color: #888;">
+                Загрузка комнат...
             </div>
         </div>
-    </div>
+    </section>
 
-    <script src="/socket.io/socket.io.js"></script>
     <script>
-        let socket = null;
-        let currentUsername = null;
-        let currentRoom = null;
-        let currentVideo = null;
-        let isPlaying = false;
-        let currentTime = 0;
-        let videoDuration = 0;
-        let progressInterval = null;
-
-        const videoPlayer = document.getElementById('videoPlayer');
-        const progressBar = document.getElementById('progressBar');
-        const timeDisplay = document.getElementById('timeDisplay');
-        const playBtn = document.getElementById('playBtn');
-        const videoInfo = document.getElementById('videoInfo');
-        const roomInfo = document.getElementById('roomInfo');
-        const currentRoomName = document.getElementById('currentRoomName');
-        const usersCount = document.getElementById('usersCount');
-        const inviteUrl = document.getElementById('inviteUrl');
-        const usersList = document.getElementById('users');
-
-        function joinRoom() {
-            const roomId = document.getElementById('roomInput').value;
-            const username = document.getElementById('usernameInput').value;
-            
-            if (!roomId || !username) {
-                alert('Введите название комнаты и ваше имя');
-                return;
-            }
-            
-            socket = io();
-            currentUsername = username;
-            currentRoom = roomId;
-            
-            socket.emit('join-room', roomId, username);
-            setupSocketListeners();
-            
-            // Показываем информацию о комнате
-            roomInfo.classList.add('active');
-            currentRoomName.textContent = roomId;
-            
-            // Генерируем ссылку для приглашения
-            const currentUrl = window.location.href.split('?')[0];
-            inviteUrl.value = `${currentUrl}?room=${encodeURIComponent(roomId)}`;
-            
-            addMessage('Система', `Вы создали комнату "${roomId}"`, new Date().toLocaleTimeString());
-            addMessage('Система', 'Скопируйте ссылку выше, чтобы пригласить друзей!', new Date().toLocaleTimeString());
-        }
-
-        function setupSocketListeners() {
-            socket.on('room-state', (playerState, videoUrl) => {
-                if (videoUrl) {
-                    loadVideoFromUrl(videoUrl, false);
+        // Загрузка списка комнат
+        async function loadRooms() {
+            try {
+                const response = await fetch('/api/rooms');
+                const rooms = await response.json();
+                
+                const roomsList = document.getElementById('roomsList');
+                roomsList.innerHTML = '';
+                
+                if (rooms.length === 0) {
+                    roomsList.innerHTML = `
+                        <div style="text-align: center; grid-column: 1 / -1; color: #888;">
+                            Пока нет активных комнат. 
+                            <a href="register.html" style="color: #4ecdc4;">Создайте первую!</a>
+                        </div>
+                    `;
+                    return;
                 }
-                if (playerState) {
-                    syncVideoState(playerState);
-                }
-            });
-            
-            socket.on('play', (time) => {
-                playVideo();
-                seekTo(time);
-            });
-            
-            socket.on('pause', (time) => {
-                pauseVideo();
-                seekTo(time);
-            });
-            
-            socket.on('seek', (time) => {
-                seekTo(time);
-            });
-            
-            socket.on('video-changed', (videoUrl) => {
-                loadVideoFromUrl(videoUrl, false);
-            });
-            
-            socket.on('new-message', (data) => {
-                addMessage(data.username, data.message, data.timestamp);
-            });
-            
-            socket.on('user-joined', (username) => {
-                addMessage('Система', `${username} присоединился к комнате`, new Date().toLocaleTimeString());
-            });
-            
-            socket.on('user-left', (username) => {
-                addMessage('Система', `${username} покинул комнату`, new Date().toLocaleTimeString());
-            });
-            
-            socket.on('user-list-update', (users) => {
-                updateUsersList(users);
-            });
-        }
-
-        function updateUsersList(users) {
-            usersList.innerHTML = '';
-            users.forEach(user => {
-                const userElement = document.createElement('div');
-                userElement.className = 'user-item';
-                userElement.textContent = user;
-                usersList.appendChild(userElement);
-            });
-            usersCount.textContent = users.length;
-        }
-
-        function copyInviteLink() {
-            inviteUrl.select();
-            document.execCommand('copy');
-            alert('Ссылка скопирована! Отправьте её друзьям.');
-        }
-
-        // Автоприсоединение к комнате из URL
-        function getRoomFromUrl() {
-            const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.get('room');
-        }
-
-        // При загрузке страницы проверяем, есть ли комната в URL
-        window.addEventListener('load', function() {
-            const roomFromUrl = getRoomFromUrl();
-            if (roomFromUrl) {
-                document.getElementById('roomInput').value = roomFromUrl;
+                
+                rooms.forEach(room => {
+                    const roomCard = document.createElement('div');
+                    roomCard.className = 'room-card';
+                    roomCard.innerHTML = `
+                        <div class="room-header">
+                            <h3>${room.name}</h3>
+                            <div class="room-users">👥 ${room.users.length}</div>
+                        </div>
+                        <p style="color: #ccc; margin-bottom: 1rem;">${room.description || 'Присоединяйтесь к просмотру!'}</p>
+                        <a href="room.html?room=${room._id}" class="btn btn-primary" style="display: block; text-align: center;">
+                            Присоединиться
+                        </a>
+                    `;
+                    roomsList.appendChild(roomCard);
+                });
+            } catch (error) {
+                console.error('Ошибка загрузки комнат:', error);
             }
-        });
-
-        // Остальные функции (loadVideo, playVideo, pauseVideo, addMessage и т.д.)
-        // остаются такими же, как в предыдущей версии
-        // ... (вставьте сюда остальной JavaScript код из предыдущей версии)
-
+        }
+        
+        loadRooms();
     </script>
 </body>
 </html>
