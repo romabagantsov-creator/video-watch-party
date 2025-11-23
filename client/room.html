@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Комната просмотра - VideoWatchParty</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .room-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .video-section {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .video-player-container {
+            background: rgba(45, 45, 45, 0.8);
+            border-radius: 15px;
+            padding: 1rem;
+            border: 1px solid #444;
+        }
+        
+        #videoPlayer {
+            width: 100%;
+            height: 400px;
+            border-radius: 10px;
+            background: #000;
+        }
+        
+        .video-controls {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+            justify-content: center;
+        }
+        
+        .chat-container {
+            background: rgba(45, 45, 45, 0.8);
+            border-radius: 15px;
+            padding: 1.5rem;
+            border: 1px solid #444;
+            display: flex;
+            flex-direction: column;
+            height: 500px;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 1rem;
+            padding-right: 0.5rem;
+        }
+        
+        .chat-message {
+            margin-bottom: 1rem;
+            padding: 0.8rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+        
+        .message-sender {
+            font-weight: bold;
+            color: #ff6b6b;
+            margin-bottom: 0.3rem;
+        }
+        
+        .chat-input {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .chat-input input {
+            flex: 1;
+            padding: 0.8rem;
+            border: 1px solid #555;
+            background: #333;
+            color: white;
+            border-radius: 8px;
+        }
+        
+        .room-info {
+            background: rgba(45, 45, 45, 0.8);
+            border-radius: 15px;
+            padding: 1.5rem;
+            border: 1px solid #444;
+            margin-bottom: 2rem;
+        }
+        
+        .room-users {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .user-badge {
+            background: rgba(255, 107, 107, 0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            border: 1px solid #ff6b6b;
+        }
+        
+        @media (max-width: 768px) {
+            .video-section {
+                grid-template-columns: 1fr;
+            }
+            
+            #videoPlayer {
+                height: 300px;
+            }
+            
+            .chat-container {
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">🎬 VideoWatchParty</div>
+        <div class="nav-links">
+            <a href="/">Главная</a>
+            <a href="/dashboard">Личный кабинет</a>
+            <a href="#" id="usernameDisplay">Гость</a>
+            <a href="#" onclick="logout()" class="btn btn-secondary">Выйти</a>
+        </div>
+    </nav>
+
+    <div class="room-container">
+        <div class="room-info">
+            <h1 id="roomTitle">Загрузка комнаты...</h1>
+            <p id="roomDescription"></p>
+            <div class="room-users" id="roomUsers">
+                <!-- Список пользователей загрузится через JS -->
+            </div>
+        </div>
+
+        <div class="video-section">
+            <div class="video-player-container">
+                <video id="videoPlayer" controls>
+                    <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" type="video/mp4">
+                    Ваш браузер не поддерживает видео тег.
+                </video>
+                <div class="video-controls">
+                    <input type="range" id="seekBar" min="0" max="100" value="0" style="flex: 1;">
+                    <button id="playBtn" class="btn btn-primary">▶️ Воспр.</button>
+                    <button id="pauseBtn" class="btn btn-secondary">⏸️ Пауза</button>
+                </div>
+            </div>
+
+            <div class="chat-container">
+                <h3>💬 Чат комнаты</h3>
+                <div class="chat-messages" id="chatMessages">
+                    <div class="chat-message">
+                        <div class="message-sender">Система</div>
+                        <div>Добро пожаловать в комнату! Начните общение</div>
+                    </div>
+                </div>
+                <div class="chat-input">
+                    <input type="text" id="chatInput" placeholder="Введите сообщение...">
+                    <button id="sendBtn" class="btn btn-primary">Отправить</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🔗 Пригласить друзей</h2>
+            <p>Отправьте эту ссылку друзьям, чтобы они присоединились к просмотру:</p>
+            <div style="display: flex; gap: 1rem; align-items: center;">
+                <input type="text" id="inviteLink" readonly style="flex: 1; padding: 0.8rem; background: #333; border: 1px solid #555; border-radius: 8px; color: white;">
+                <button id="copyInviteBtn" class="btn btn-primary">Копировать</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // Получаем ID комнаты из URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomId = urlParams.get('room') || 'default-room';
+        
+        let socket = null;
+        let currentUser = JSON.parse(localStorage.getItem('user') || 'null');
+
+        // Инициализация при загрузке
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeRoom();
+            updateUserNavigation();
+        });
+
+        function initializeRoom() {
+            // Подключаемся к комнате
+            socket = io();
+            
+            // Присоединяемся к комнате
+            socket.emit('join-room', roomId);
+            
+            // Обновляем интерфейс
+            updateRoomUI();
+            initializeVideoPlayer();
+            initializeChat();
+            initializeInviteLink();
+        }
+
+        function updateUserNavigation() {
+            const usernameDisplay = document.getElementById('usernameDisplay');
+            if (currentUser && usernameDisplay) {
+                usernameDisplay.textContent = currentUser.username;
+            }
+        }
+
+        function updateRoomUI() {
+            document.getElementById('roomTitle').textContent = `Комната: ${roomId}`;
+            document.getElementById('inviteLink').value = window.location.href;
+        }
+
+        function initializeVideoPlayer() {
+            const videoPlayer = document.getElementById('videoPlayer');
+            const playBtn = document.getElementById('playBtn');
+            const pauseBtn = document.getElementById('pauseBtn');
+            const seekBar = document.getElementById('seekBar');
+
+            // События видео
+            videoPlayer.addEventListener('play', () => {
+                socket.emit('play-video', {
+                    roomId: roomId,
+                    timestamp: videoPlayer.currentTime
+                });
+            });
+
+            videoPlayer.addEventListener('pause', () => {
+                socket.emit('pause-video', {
+                    roomId: roomId,
+                    timestamp: videoPlayer.currentTime
+                });
+            });
+
+            videoPlayer.addEventListener('seeked', () => {
+                socket.emit('seek-video', {
+                    roomId: roomId,
+                    timestamp: videoPlayer.currentTime
+                });
+            });
+
+            // Кнопки управления
+            playBtn.addEventListener('click', () => {
+                videoPlayer.play();
+            });
+
+            pauseBtn.addEventListener('click', () => {
+                videoPlayer.pause();
+            });
+
+            // Ползунок
+            videoPlayer.addEventListener('timeupdate', () => {
+                seekBar.value = (videoPlayer.currentTime / videoPlayer.duration) * 100;
+            });
+
+            seekBar.addEventListener('input', () => {
+                videoPlayer.currentTime = (seekBar.value / 100) * videoPlayer.duration;
+            });
+
+            // Слушаем события от других пользователей
+            socket.on('video-play', (data) => {
+                if (Math.abs(videoPlayer.currentTime - data.timestamp) > 2) {
+                    videoPlayer.currentTime = data.timestamp;
+                }
+                videoPlayer.play();
+            });
+
+            socket.on('video-pause', (data) => {
+                if (Math.abs(videoPlayer.currentTime - data.timestamp) > 2) {
+                    videoPlayer.currentTime = data.timestamp;
+                }
+                videoPlayer.pause();
+            });
+
+            socket.on('video-seek', (data) => {
+                if (Math.abs(videoPlayer.currentTime - data.timestamp) > 2) {
+                    videoPlayer.currentTime = data.timestamp;
+                }
+            });
+
+            socket.on('user-joined', (userId) => {
+                addSystemMessage(`Пользователь присоединился к комнате`);
+            });
+        }
+
+        function initializeChat() {
+            const chatInput = document.getElementById('chatInput');
+            const sendBtn = document.getElementById('sendBtn');
+            const chatMessages = document.getElementById('chatMessages');
+
+            sendBtn.addEventListener('click', sendMessage);
+            chatInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+
+            // Слушаем сообщения от других пользователей
+            socket.on('chat-message', (data) => {
+                addChatMessage(data.username, data.message);
+            });
+        }
+
+        function sendMessage() {
+            const chatInput = document.getElementById('chatInput');
+            const message = chatInput.value.trim();
+            
+            if (message && currentUser) {
+                // Отправляем сообщение
+                socket.emit('chat-message', {
+                    roomId: roomId,
+                    username: currentUser.username,
+                    message: message
+                });
+                
+                // Показываем свое сообщение
+                addChatMessage(currentUser.username, message);
+                chatInput.value = '';
+            }
+        }
+
+        function addChatMessage(username, message) {
+            const chatMessages = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'chat-message';
+            messageDiv.innerHTML = `
+                <div class="message-sender">${username}</div>
+                <div>${message}</div>
+            `;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function addSystemMessage(message) {
+            const chatMessages = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'chat-message';
+            messageDiv.innerHTML = `
+                <div class="message-sender" style="color: #4ecdc4;">Система</div>
+                <div>${message}</div>
+            `;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function initializeInviteLink() {
+            const copyBtn = document.getElementById('copyInviteBtn');
+            copyBtn.addEventListener('click', () => {
+                const inviteLink = document.getElementById('inviteLink');
+                inviteLink.select();
+                document.execCommand('copy');
+                alert('Ссылка скопирована в буфер обмена!');
+            });
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/';
+        }
+    </script>
+</body>
+</html>
