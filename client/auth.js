@@ -44,19 +44,24 @@ if (registerForm) {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify({
+                    username: formData.username,
+                    email: formData.email,
+                    password: formData.password
+                })
             });
 
             const data = await response.json();
 
-            if (response.ok) {
+            if (response.ok && data.success) {
                 showMessage('Регистрация успешна! Перенаправление...');
                 localStorage.setItem('token', data.token);
+                localStorage.setItem('user', JSON.stringify(data.user));
                 setTimeout(() => {
                     window.location.href = '/dashboard';
                 }, 2000);
             } else {
-                showMessage(data.message || 'Ошибка регистрации', true);
+                showMessage(data.error || 'Ошибка регистрации', true);
             }
         } catch (error) {
             console.error('Ошибка:', error);
@@ -86,14 +91,15 @@ if (loginForm) {
 
             const data = await response.json();
 
-            if (response.ok) {
+            if (response.ok && data.success) {
                 showMessage('Вход успешен! Перенаправление...');
                 localStorage.setItem('token', data.token);
+                localStorage.setItem('user', JSON.stringify(data.user));
                 setTimeout(() => {
                     window.location.href = '/dashboard';
                 }, 2000);
             } else {
-                showMessage(data.message || 'Ошибка входа', true);
+                showMessage(data.error || 'Ошибка входа', true);
             }
         } catch (error) {
             console.error('Ошибка:', error);
@@ -107,8 +113,30 @@ export function checkAuth() {
     return localStorage.getItem('token');
 }
 
+// Получение данных пользователя
+export function getUser() {
+    const userData = localStorage.getItem('user');
+    return userData ? JSON.parse(userData) : null;
+}
+
 // Выход
 export function logout() {
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
     window.location.href = '/';
 }
+
+// Проверка авторизации при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    // Если пользователь уже авторизован, перенаправляем с login/register
+    if (checkAuth() && (window.location.pathname === '/login' || window.location.pathname === '/register')) {
+        window.location.href = '/dashboard';
+    }
+    
+    // Обновляем навигацию если есть элементы
+    const usernameDisplay = document.getElementById('usernameDisplay');
+    const user = getUser();
+    if (usernameDisplay && user) {
+        usernameDisplay.textContent = user.username;
+    }
+});
