@@ -53,6 +53,9 @@ app.get('/room.html', (req, res) => {
 let users = [];
 let rooms = [];
 
+// Хранилище текущих видео по комнатам
+let roomVideos = {};
+
 // === AUTH API ROUTES ===
 app.post('/api/auth/register', (req, res) => {
   try {
@@ -287,6 +290,35 @@ io.on('connection', (socket) => {
     socket.join(roomId);
     socket.to(roomId).emit('user-joined', socket.id);
     console.log(`User ${socket.id} joined room ${roomId}`);
+  });
+
+  // Запрос текущего видео комнаты
+  socket.on('request-current-video', (data) => {
+    const roomId = data.roomId;
+    if (roomVideos[roomId]) {
+      socket.emit('current-video', {
+        videoUrl: roomVideos[roomId].videoUrl,
+        videoType: roomVideos[roomId].videoType
+      });
+      console.log(`Sent current video to user ${socket.id} in room ${roomId}: ${roomVideos[roomId].videoUrl}`);
+    }
+  });
+
+  // Смена видео в комнате
+  socket.on('video-changed', (data) => {
+    // Сохраняем текущее видео для комнаты
+    roomVideos[data.roomId] = {
+      videoUrl: data.videoUrl,
+      videoType: data.videoType
+    };
+    
+    // Отправляем всем в комнате, включая отправителя
+    io.to(data.roomId).emit('video-changed', {
+      videoUrl: data.videoUrl,
+      videoType: data.videoType
+    });
+    
+    console.log(`Video changed in room ${data.roomId}: ${data.videoUrl} (${data.videoType})`);
   });
 
   socket.on('play-video', (data) => {
