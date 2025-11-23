@@ -68,6 +68,7 @@ function initializeDashboard() {
     loadActiveRooms();
     loadStats();
     initializeRoomCreation();
+    loadUserData();
 }
 
 // Загрузка комнат для главной страницы
@@ -116,13 +117,13 @@ async function loadMyRooms() {
             }
         });
         
-        const rooms = await response.json();
+        const data = await response.json();
         const myRoomsList = document.getElementById('myRoomsList');
         const roomsCount = document.getElementById('roomsCount');
         
         if (!myRoomsList) return;
         
-        if (rooms.length === 0) {
+        if (!data || data.length === 0) {
             myRoomsList.innerHTML = `
                 <div class="empty-state">
                     <div>🎬</div>
@@ -134,7 +135,7 @@ async function loadMyRooms() {
             return;
         }
         
-        myRoomsList.innerHTML = rooms.map(room => `
+        myRoomsList.innerHTML = data.map(room => `
             <div class="room-item">
                 <div class="room-info">
                     <h4>${room.name}</h4>
@@ -152,7 +153,7 @@ async function loadMyRooms() {
             </div>
         `).join('');
         
-        if (roomsCount) roomsCount.textContent = rooms.length;
+        if (roomsCount) roomsCount.textContent = data.length;
         
     } catch (error) {
         console.error('Ошибка загрузки комнат:', error);
@@ -199,6 +200,41 @@ async function loadActiveRooms() {
         
     } catch (error) {
         console.error('Ошибка загрузки активных комнат:', error);
+    }
+}
+
+// Загрузка данных пользователя
+async function loadUserData() {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+        const response = await fetch(`${API_URL}/api/auth/me`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+            const usernameDisplay = document.getElementById('usernameDisplay');
+            const userName = document.getElementById('userName');
+            
+            if (usernameDisplay) {
+                usernameDisplay.textContent = data.user.username;
+            }
+            if (userName) {
+                userName.textContent = data.user.username;
+            }
+            
+            // Сохраняем актуальные данные пользователя
+            localStorage.setItem('user', JSON.stringify(data.user));
+        } else {
+            console.error('Ошибка загрузки пользователя:', data.error);
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки данных:', error);
     }
 }
 
@@ -307,11 +343,11 @@ function initializeVideoPlayer() {
 
     if (seekBar) {
         videoPlayer.addEventListener('timeupdate', () => {
-            seekBar.value = videoPlayer.currentTime;
+            seekBar.value = (videoPlayer.currentTime / videoPlayer.duration) * 100;
         });
 
         seekBar.addEventListener('input', () => {
-            videoPlayer.currentTime = seekBar.value;
+            videoPlayer.currentTime = (seekBar.value / 100) * videoPlayer.duration;
         });
     }
 }
