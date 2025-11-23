@@ -280,5 +280,20 @@
             loadStats();
         });
     </script>
+    <!-- Для index.html, login.html, register.html -->
+<script src="/socket.io/socket.io.js"></script>
+<script type="module" src="auth.js"></script>
+<script type="module" src="client.js"></script>
+
+<!-- Только для dashboard.html -->
+<script src="/socket.io/socket.io.js"></script>
+<script type="module">
+    import { checkAuth } from './auth.js';
+    if (!checkAuth()) {
+        window.location.href = '/login';
+    }
+</script>
+<script type="module" src="client.js"></script>
+    
 </body>
 </html>
