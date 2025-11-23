@@ -1,28 +1,32 @@
 {
   "name": "video-watch-party",
   "version": "1.0.0",
-  "description": "Video watch party application",
+  "description": "Video watch party application with authentication",
   "type": "module",
-  "main": "server.js",
+  "main": "server/server.js",
   "scripts": {
-    "dev": "node server.js",
-    "start": "node server.js",
+    "dev": "node server/server.js",
+    "start": "node server/server.js",
     "build": "echo 'No build step required'",
-    "test": "echo 'No tests specified'",
-    "lint": "echo 'No linter specified'"
+    "test": "echo 'No tests specified'"
   },
   "keywords": [
     "video",
     "watch-party",
     "streaming",
-    "websockets"
+    "websockets",
+    "authentication"
   ],
-  "author": "Your Name",
+  "author": "romabagantsoy-creator",
   "license": "MIT",
   "dependencies": {
     "express": "^4.18.2",
     "socket.io": "^4.7.2",
-    "cors": "^2.8.5"
+    "cors": "^2.8.5",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "sqlite3": "^5.1.6",
+    "dotenv": "^16.3.1"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
@@ -33,6 +37,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-username/video-watch-party"
+    "url": "https://github.com/romabagantsoy-creator/video-watch-party"
   }
 }
