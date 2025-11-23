@@ -51,26 +51,7 @@ app.get('/room.html', (req, res) => {
 
 // Mock data storage
 let users = [];
-let rooms = [
-  {
-    _id: '1',
-    name: 'Киновечер с друзьями',
-    description: 'Смотрим новые фильмы',
-    users: ['user1', 'user2'],
-    owner: { username: 'Admin' },
-    createdAt: new Date(),
-    isPublic: true
-  },
-  {
-    _id: '2', 
-    name: 'Аниме марафон',
-    description: 'Смотрим лучшие аниме',
-    users: ['user3'],
-    owner: { username: 'User' },
-    createdAt: new Date(),
-    isPublic: true
-  }
-];
+let rooms = [];
 
 // === AUTH API ROUTES ===
 app.post('/api/auth/register', (req, res) => {
