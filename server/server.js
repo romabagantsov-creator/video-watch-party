@@ -336,6 +336,15 @@ io.on('connection', (socket) => {
     console.log(`Video seek in room ${data.roomId} to ${data.timestamp}`);
   });
 
+  // Синхронизация видео по запросу
+  socket.on('sync-video', (data) => {
+    io.to(data.roomId).emit('sync-video', {
+      timestamp: data.timestamp,
+      action: data.action
+    });
+    console.log(`Video sync in room ${data.roomId} to ${data.timestamp}`);
+  });
+
   // Обработка сообщений чата
   socket.on('chat-message', (data) => {
     // Отправляем сообщение всем в комнате, включая отправителя
