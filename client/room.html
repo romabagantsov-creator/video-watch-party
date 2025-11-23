@@ -47,6 +47,10 @@
             justify-content: center;
         }
         
+        .video-controls.hidden {
+            display: none;
+        }
+        
         .video-url-input {
             display: flex;
             gap: 0.5rem;
@@ -67,6 +71,16 @@
             font-size: 0.8rem;
             color: #888;
             text-align: center;
+        }
+        
+        .platform-notice {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: rgba(255, 107, 107, 0.1);
+            border: 1px solid #ff6b6b;
+            border-radius: 8px;
+            text-align: center;
+            color: #ff6b6b;
         }
         
         .chat-container {
@@ -180,6 +194,11 @@
                 <!-- Контейнер для iframe (YouTube, VK, Rutube) -->
                 <div id="videoIframeContainer"></div>
                 
+                <!-- Уведомление о платформе -->
+                <div id="platformNotice" class="platform-notice" style="display: none;">
+                    Для этого типа видео используйте встроенные элементы управления плеера
+                </div>
+                
                 <!-- Поле для вставки ссылки на видео -->
                 <div class="video-url-input">
                     <input type="text" id="videoUrlInput" placeholder="Вставьте ссылку на видео (YouTube, VK, Rutube, MP4)">
@@ -190,7 +209,7 @@
                     📹 Поддерживаются: YouTube, VK Video, Rutube, прямые MP4 ссылки
                 </div>
                 
-                <div class="video-controls">
+                <div class="video-controls" id="videoControls">
                     <input type="range" id="seekBar" min="0" max="100" value="0" style="flex: 1;">
                     <button id="playBtn" class="btn btn-primary">▶️ Воспр.</button>
                     <button id="pauseBtn" class="btn btn-secondary">⏸️ Пауза</button>
@@ -281,24 +300,40 @@
             const videoUrl = document.getElementById('videoUrlInput').value.trim();
             const videoPlayer = document.getElementById('videoPlayer');
             const iframeContainer = document.getElementById('videoIframeContainer');
+            const videoControls = document.getElementById('videoControls');
+            const platformNotice = document.getElementById('platformNotice');
             
             if (videoUrl) {
                 // Очищаем предыдущие источники
                 videoPlayer.innerHTML = '';
                 iframeContainer.innerHTML = '';
                 
-                // Скрываем все плееры
+                // Скрываем все плееры и уведомления
                 videoPlayer.style.display = 'none';
+                platformNotice.style.display = 'none';
+                videoControls.classList.remove('hidden');
                 
                 // Определяем тип видео и загружаем
                 if (videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')) {
                     loadYouTubeVideo(videoUrl);
+                    // Скрываем контролы для YouTube
+                    videoControls.classList.add('hidden');
+                    platformNotice.style.display = 'block';
                 } else if (videoUrl.includes('vk.com') || videoUrl.includes('vk.ru')) {
                     loadVKVideo(videoUrl);
+                    // Скрываем контролы для VK
+                    videoControls.classList.add('hidden');
+                    platformNotice.style.display = 'block';
                 } else if (videoUrl.includes('rutube.ru')) {
                     loadRutubeVideo(videoUrl);
+                    // Скрываем контролы для Rutube
+                    videoControls.classList.add('hidden');
+                    platformNotice.style.display = 'block';
                 } else if (videoUrl.endsWith('.mp4') || videoUrl.includes('mp4')) {
                     loadMP4Video(videoUrl);
+                    // Показываем контролы для MP4
+                    videoControls.classList.remove('hidden');
+                    platformNotice.style.display = 'none';
                 } else {
                     alert('Не поддерживаемый формат видео. Используйте: YouTube, VK, Rutube или прямые MP4 ссылки');
                     return;
@@ -377,26 +412,19 @@
         }
 
         function extractVKVideoId(url) {
-            // Форматы VK видео:
-            // https://vk.com/video-123456789_456239017
-            // https://vk.com/video123456789_456239017
-            // https://vk.com/video?z=video-123456789_456239017
             const regExp = /video(?:-)?(\d+)_(\d+)/;
             const match = url.match(regExp);
             if (match && match[1] && match[2]) {
                 return {
                     ownerId: match[1],
                     videoId: match[2],
-                    hash: '' // VK иногда требует hash, но часто работает и без
+                    hash: ''
                 };
             }
             return false;
         }
 
         function extractRutubeId(url) {
-            // Форматы Rutube:
-            // https://rutube.ru/video/7c6a8b9c0d1e2f3a4b5c6d7e8f9a0b1c/
-            // https://rutube.ru/play/embed/7c6a8b9c0d1e2f3a4b5c6d7e8f9a0b1c
             const regExp = /rutube\.ru\/(?:video|play\/embed)\/([a-zA-Z0-9]+)/;
             const match = url.match(regExp);
             return (match && match[1]) ? match[1] : false;
