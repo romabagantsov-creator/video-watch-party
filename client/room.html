@@ -83,6 +83,16 @@
             color: #ff6b6b;
         }
         
+        .sync-notice {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: rgba(76, 175, 80, 0.1);
+            border: 1px solid #4caf50;
+            border-radius: 8px;
+            text-align: center;
+            color: #4caf50;
+        }
+        
         .current-video-info {
             margin-top: 1rem;
             padding: 0.8rem;
@@ -211,7 +221,13 @@
                 
                 <!-- Уведомление о платформе -->
                 <div id="platformNotice" class="platform-notice" style="display: none;">
-                    Для этого типа видео используйте встроенные элементы управления плеера
+                    ⚠️ Для YouTube/VK/Rutube синхронизация воспроизведения недоступна из-за ограничений платформ.<br>
+                    Используйте встроенные элементы управления плеера и координируйте запуск через чат.
+                </div>
+                
+                <!-- Уведомление о синхронизации -->
+                <div id="syncNotice" class="sync-notice" style="display: none;">
+                    ✅ Синхронизация воспроизведения активна для MP4 видео
                 </div>
                 
                 <!-- Поле для вставки ссылки на видео -->
@@ -228,6 +244,7 @@
                     <input type="range" id="seekBar" min="0" max="100" value="0" style="flex: 1;">
                     <button id="playBtn" class="btn btn-primary">▶️ Воспр.</button>
                     <button id="pauseBtn" class="btn btn-secondary">⏸️ Пауза</button>
+                    <button id="syncBtn" class="btn btn-secondary">🔄 Синхр.</button>
                 </div>
             </div>
 
@@ -266,6 +283,7 @@
         let currentUser = JSON.parse(localStorage.getItem('user') || 'null');
         let currentVideoType = '';
         let currentVideoUrl = '';
+        let isSyncingEnabled = true;
 
         // Инициализация при загрузке
         document.addEventListener('DOMContentLoaded', function() {
@@ -325,6 +343,7 @@
             const iframeContainer = document.getElementById('videoIframeContainer');
             const videoControls = document.getElementById('videoControls');
             const platformNotice = document.getElementById('platformNotice');
+            const syncNotice = document.getElementById('syncNotice');
             const currentVideoInfo = document.getElementById('currentVideoInfo');
             const currentVideoUrlSpan = document.getElementById('currentVideoUrl');
             
@@ -343,29 +362,34 @@
             // Скрываем все плееры и уведомления
             videoPlayer.style.display = 'none';
             platformNotice.style.display = 'none';
+            syncNotice.style.display = 'none';
             videoControls.classList.remove('hidden');
             
             // Определяем тип видео и загружаем
             if (videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')) {
                 loadYouTubeVideo(videoUrl);
-                // Скрываем контролы для YouTube
+                // Скрываем контролы для YouTube и показываем предупреждение
                 videoControls.classList.add('hidden');
                 platformNotice.style.display = 'block';
+                isSyncingEnabled = false;
             } else if (videoUrl.includes('vk.com') || videoUrl.includes('vk.ru')) {
                 loadVKVideo(videoUrl);
-                // Скрываем контролы для VK
+                // Скрываем контролы для VK и показываем предупреждение
                 videoControls.classList.add('hidden');
                 platformNotice.style.display = 'block';
+                isSyncingEnabled = false;
             } else if (videoUrl.includes('rutube.ru')) {
                 loadRutubeVideo(videoUrl);
-                // Скрываем контролы для Rutube
+                // Скрываем контролы для Rutube и показываем предупреждение
                 videoControls.classList.add('hidden');
                 platformNotice.style.display = 'block';
+                isSyncingEnabled = false;
             } else if (videoUrl.endsWith('.mp4') || videoUrl.includes('mp4')) {
                 loadMP4Video(videoUrl);
-                // Показываем контролы для MP4
+                // Показываем контролы для MP4 и уведомление о синхронизации
                 videoControls.classList.remove('hidden');
-                platformNotice.style.display = 'none';
+                syncNotice.style.display = 'block';
+                isSyncingEnabled = true;
             } else {
                 alert('Не поддерживаемый формат видео. Используйте: YouTube, VK, Rutube или прямые MP4 ссылки');
                 return;
@@ -470,10 +494,11 @@
             const playBtn = document.getElementById('playBtn');
             const pauseBtn = document.getElementById('pauseBtn');
             const seekBar = document.getElementById('seekBar');
+            const syncBtn = document.getElementById('syncBtn');
 
             // События видео (только для MP4)
             videoPlayer.addEventListener('play', () => {
-                if (currentVideoType === 'MP4') {
+                if (currentVideoType === 'MP4' && isSyncingEnabled) {
                     socket.emit('play-video', {
                         roomId: roomId,
                         timestamp: videoPlayer.currentTime
@@ -482,7 +507,7 @@
             });
 
             videoPlayer.addEventListener('pause', () => {
-                if (currentVideoType === 'MP4') {
+                if (currentVideoType === 'MP4' && isSyncingEnabled) {
                     socket.emit('pause-video', {
                         roomId: roomId,
                         timestamp: videoPlayer.currentTime
@@ -491,7 +516,7 @@
             });
 
             videoPlayer.addEventListener('seeked', () => {
-                if (currentVideoType === 'MP4') {
+                if (currentVideoType === 'MP4' && isSyncingEnabled) {
                     socket.emit('seek-video', {
                         roomId: roomId,
                         timestamp: videoPlayer.currentTime
@@ -512,6 +537,18 @@
                 }
             });
 
+            // Кнопка синхронизации
+            syncBtn.addEventListener('click', () => {
+                if (currentVideoType === 'MP4') {
+                    socket.emit('sync-video', {
+                        roomId: roomId,
+                        timestamp: videoPlayer.currentTime,
+                        action: 'sync'
+                    });
+                    addSystemMessage('Отправлен запрос на синхронизацию');
+                }
+            });
+
             // Ползунок (только для MP4)
             videoPlayer.addEventListener('timeupdate', () => {
                 if (currentVideoType === 'MP4' && videoPlayer.duration) {
@@ -527,26 +564,38 @@
 
             // Слушаем события от других пользователей (только для MP4)
             socket.on('video-play', (data) => {
-                if (currentVideoType === 'MP4' && Math.abs(videoPlayer.currentTime - data.timestamp) > 2) {
-                    videoPlayer.currentTime = data.timestamp;
-                }
-                if (currentVideoType === 'MP4') {
+                if (currentVideoType === 'MP4' && isSyncingEnabled) {
+                    if (Math.abs(videoPlayer.currentTime - data.timestamp) > 2) {
+                        videoPlayer.currentTime = data.timestamp;
+                    }
                     videoPlayer.play();
+                    addSystemMessage('Видео запущено другим пользователем');
                 }
             });
 
             socket.on('video-pause', (data) => {
-                if (currentVideoType === 'MP4' && Math.abs(videoPlayer.currentTime - data.timestamp) > 2) {
-                    videoPlayer.currentTime = data.timestamp;
-                }
-                if (currentVideoType === 'MP4') {
+                if (currentVideoType === 'MP4' && isSyncingEnabled) {
+                    if (Math.abs(videoPlayer.currentTime - data.timestamp) > 2) {
+                        videoPlayer.currentTime = data.timestamp;
+                    }
                     videoPlayer.pause();
+                    addSystemMessage('Видео приостановлено другим пользователем');
                 }
             });
 
             socket.on('video-seek', (data) => {
-                if (currentVideoType === 'MP4' && Math.abs(videoPlayer.currentTime - data.timestamp) > 2) {
+                if (currentVideoType === 'MP4' && isSyncingEnabled) {
+                    if (Math.abs(videoPlayer.currentTime - data.timestamp) > 2) {
+                        videoPlayer.currentTime = data.timestamp;
+                    }
+                }
+            });
+
+            // Синхронизация по запросу
+            socket.on('sync-video', (data) => {
+                if (currentVideoType === 'MP4') {
                     videoPlayer.currentTime = data.timestamp;
+                    addSystemMessage('Видео синхронизировано по запросу');
                 }
             });
 
