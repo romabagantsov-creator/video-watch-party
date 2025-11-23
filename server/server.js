@@ -45,6 +45,10 @@ app.get('/dashboard', (req, res) => {
   res.sendFile(path.join(__dirname, '../client/dashboard.html'));
 });
 
+app.get('/room.html', (req, res) => {
+  res.sendFile(path.join(__dirname, '../client/room.html'));
+});
+
 // Mock data storage
 let users = [];
 let rooms = [
@@ -306,14 +310,28 @@ io.on('connection', (socket) => {
 
   socket.on('play-video', (data) => {
     socket.to(data.roomId).emit('video-play', data);
+    console.log(`Video play in room ${data.roomId} at ${data.timestamp}`);
   });
 
   socket.on('pause-video', (data) => {
     socket.to(data.roomId).emit('video-pause', data);
+    console.log(`Video pause in room ${data.roomId} at ${data.timestamp}`);
   });
 
   socket.on('seek-video', (data) => {
     socket.to(data.roomId).emit('video-seek', data);
+    console.log(`Video seek in room ${data.roomId} to ${data.timestamp}`);
+  });
+
+  // Обработка сообщений чата
+  socket.on('chat-message', (data) => {
+    // Отправляем сообщение всем в комнате, включая отправителя
+    io.to(data.roomId).emit('chat-message', {
+      username: data.username,
+      message: data.message,
+      timestamp: new Date().toLocaleTimeString()
+    });
+    console.log(`Chat message in room ${data.roomId} from ${data.username}: ${data.message}`);
   });
 
   socket.on('disconnect', () => {
@@ -328,5 +346,6 @@ server.listen(PORT, () => {
   console.log(`   POST http://localhost:${PORT}/api/auth/register`);
   console.log(`   POST http://localhost:${PORT}/api/auth/login`);
   console.log(`   GET  http://localhost:${PORT}/api/auth/me`);
+  console.log(`🎬 Room page: http://localhost:${PORT}/room.html`);
   console.log(`🏠 Visit: http://localhost:${PORT}`);
 });
