@@ -40,6 +40,21 @@
             justify-content: center;
         }
         
+        .video-url-input {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        
+        .video-url-input input {
+            flex: 1;
+            padding: 0.8rem;
+            border: 1px solid #555;
+            background: #333;
+            color: white;
+            border-radius: 8px;
+        }
+        
         .chat-container {
             background: rgba(45, 45, 45, 0.8);
             border-radius: 15px;
@@ -144,9 +159,16 @@
         <div class="video-section">
             <div class="video-player-container">
                 <video id="videoPlayer" controls>
-                    <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" type="video/mp4">
+                    <!-- Видео будет загружено через JS -->
                     Ваш браузер не поддерживает видео тег.
                 </video>
+                
+                <!-- Поле для вставки ссылки на видео -->
+                <div class="video-url-input">
+                    <input type="text" id="videoUrlInput" placeholder="Вставьте ссылку на видео (YouTube, Vimeo, MP4)">
+                    <button id="loadVideoBtn" class="btn btn-primary">Загрузить</button>
+                </div>
+                
                 <div class="video-controls">
                     <input type="range" id="seekBar" min="0" max="100" value="0" style="flex: 1;">
                     <button id="playBtn" class="btn btn-primary">▶️ Воспр.</button>
@@ -159,7 +181,7 @@
                 <div class="chat-messages" id="chatMessages">
                     <div class="chat-message">
                         <div class="message-sender">Система</div>
-                        <div>Добро пожаловать в комнату! Начните общение</div>
+                        <div>Добро пожаловать в комнату! Вставьте ссылку на видео чтобы начать просмотр</div>
                     </div>
                 </div>
                 <div class="chat-input">
@@ -206,6 +228,7 @@
             initializeVideoPlayer();
             initializeChat();
             initializeInviteLink();
+            initializeVideoUrlInput();
         }
 
         function updateUserNavigation() {
@@ -218,6 +241,73 @@
         function updateRoomUI() {
             document.getElementById('roomTitle').textContent = `Комната: ${roomId}`;
             document.getElementById('inviteLink').value = window.location.href;
+        }
+
+        function initializeVideoUrlInput() {
+            const videoUrlInput = document.getElementById('videoUrlInput');
+            const loadVideoBtn = document.getElementById('loadVideoBtn');
+            
+            loadVideoBtn.addEventListener('click', loadVideoFromUrl);
+            videoUrlInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    loadVideoFromUrl();
+                }
+            });
+        }
+
+        function loadVideoFromUrl() {
+            const videoUrl = document.getElementById('videoUrlInput').value.trim();
+            const videoPlayer = document.getElementById('videoPlayer');
+            
+            if (videoUrl) {
+                // Очищаем предыдущие источники
+                videoPlayer.innerHTML = '';
+                
+                // Проверяем тип ссылки
+                if (videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')) {
+                    // Для YouTube - используем iframe
+                    const youtubeId = extractYouTubeId(videoUrl);
+                    if (youtubeId) {
+                        videoPlayer.style.display = 'none';
+                        
+                        // Создаем iframe для YouTube
+                        const iframe = document.createElement('iframe');
+                        iframe.width = '100%';
+                        iframe.height = '400';
+                        iframe.src = `https://www.youtube.com/embed/${youtubeId}`;
+                        iframe.frameBorder = '0';
+                        iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+                        iframe.allowFullscreen = true;
+                        
+                        // Вставляем iframe перед видео плеером
+                        videoPlayer.parentNode.insertBefore(iframe, videoPlayer);
+                        addSystemMessage('YouTube видео загружено');
+                    }
+                } else if (videoUrl.endsWith('.mp4') || videoUrl.includes('mp4')) {
+                    // Для прямых MP4 ссылок
+                    videoPlayer.style.display = 'block';
+                    videoPlayer.innerHTML = `
+                        <source src="${videoUrl}" type="video/mp4">
+                        Ваш браузер не поддерживает видео тег.
+                    `;
+                    videoPlayer.load();
+                    addSystemMessage('MP4 видео загружено');
+                } else {
+                    alert('Поддерживаются только YouTube ссылки и прямые ссылки на MP4 файлы');
+                }
+                
+                // Сообщаем другим пользователям о смене видео
+                socket.emit('video-changed', {
+                    roomId: roomId,
+                    videoUrl: videoUrl
+                });
+            }
+        }
+
+        function extractYouTubeId(url) {
+            const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
+            const match = url.match(regExp);
+            return (match && match[7].length === 11) ? match[7] : false;
         }
 
         function initializeVideoPlayer() {
@@ -259,11 +349,15 @@
 
             // Ползунок
             videoPlayer.addEventListener('timeupdate', () => {
-                seekBar.value = (videoPlayer.currentTime / videoPlayer.duration) * 100;
+                if (videoPlayer.duration) {
+                    seekBar.value = (videoPlayer.currentTime / videoPlayer.duration) * 100;
+                }
             });
 
             seekBar.addEventListener('input', () => {
-                videoPlayer.currentTime = (seekBar.value / 100) * videoPlayer.duration;
+                if (videoPlayer.duration) {
+                    videoPlayer.currentTime = (seekBar.value / 100) * videoPlayer.duration;
+                }
             });
 
             // Слушаем события от других пользователей
